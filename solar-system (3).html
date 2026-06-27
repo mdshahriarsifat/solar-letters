@@ -1,0 +1,1068 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Offers & Scholarships · 3D Solar System</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <style>
+        /* ─── RESET & BASE ─────────────────────────────────────────── */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #05080f;
+            overflow: hidden;
+            font-family: 'DM Sans', sans-serif;
+            color: #fff;
+            height: 100vh;
+            width: 100vw;
+            user-select: none;
+        }
+
+        #canvas-container {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 0;
+        }
+
+        /* ─── CSS2D LABELS ──────────────────────────────────────────── */
+        .label-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 5;
+            overflow: hidden;
+        }
+
+        .planet-label {
+            position: absolute;
+            top: 0;
+            left: 0;
+            will-change: transform;
+            font-family: 'DM Sans', sans-serif;
+            font-weight: 700;
+            font-size: 11px;
+            color: #ffffff;
+            text-shadow: 0 0 6px rgba(255, 255, 255, 0.5), 0 1px 3px rgba(0, 0, 0, 0.95);
+            letter-spacing: 0.04em;
+            white-space: nowrap;
+            pointer-events: none;
+            text-align: center;
+            line-height: 1.3;
+            /* Solid background instead of backdrop-filter: blurring a layer that
+               moves every frame forces the browser to recompute the blur at a new
+               sub-pixel offset on every frame, which reads as "vibrating" text.
+               A flat color is just as readable and costs nothing per-frame. */
+            background: rgba(6, 10, 20, 0.4);
+            padding: 1px 9px;
+            border-radius: 10px;
+        }
+        @media (max-width: 600px) {
+            .planet-label {
+                font-size: 8.5px;
+                padding: 1px 7px;
+            }
+        }
+        @media (max-width: 420px) {
+            .planet-label {
+                font-size: 7.5px;
+                padding: 1px 6px;
+            }
+        }
+
+        /* ─── HEADER UI ─────────────────────────────────────────────── */
+        .ui-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 30px 24px 30px;
+        }
+
+        .header {
+            text-align: center;
+            pointer-events: none;
+        }
+        .header .label {
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: 0.22em;
+            text-transform: uppercase;
+            color: #c8a15e;
+            margin-bottom: 4px;
+        }
+        .header h1 {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: clamp(28px, 5vw, 44px);
+            font-weight: 700;
+            color: #f5f0eb;
+            line-height: 1.1;
+            text-shadow: 0 0 40px rgba(0, 0, 0, 0.8);
+        }
+        .header .sub {
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.5);
+            max-width: 600px;
+            margin: 6px auto 0;
+            line-height: 1.5;
+            text-shadow: 0 0 20px rgba(0, 0, 0, 0.9);
+        }
+        .header .sub i {
+            color: #c8a15e;
+            margin: 0 4px;
+        }
+
+        .footer-hint {
+            text-align: center;
+            pointer-events: none;
+            font-size: 15px;
+            font-weight: 700;
+            color: #ffe89a;
+            letter-spacing: 0.07em;
+            text-shadow: 0 0 18px rgba(255, 200, 80, 0.85), 0 0 6px rgba(255, 160, 40, 0.6), 0 1px 3px rgba(0,0,0,0.95);
+            animation: hintPulse 2s ease-in-out infinite;
+        }
+        @keyframes hintPulse {
+            0%, 100% { opacity: 0.55; transform: scale(0.98); }
+            50% { opacity: 1; transform: scale(1.01); }
+        }
+        .footer-hint i {
+            color: #ffd060;
+            margin: 0 6px;
+        }
+        @media (max-width: 600px) {
+            .ui-overlay {
+                padding: 16px 12px 16px;
+            }
+            .header .sub {
+                font-size: 11px;
+            }
+            .footer-hint {
+                font-size: 13px;
+            }
+        }
+
+        /* ─── INFO CARD ─────────────────────────────────────────────── */
+        #info-panel {
+            position: fixed;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%) translateY(30px);
+            z-index: 20;
+            background: rgba(10, 16, 30, 0.88);
+            backdrop-filter: blur(24px) saturate(1.4);
+            -webkit-backdrop-filter: blur(24px) saturate(1.4);
+            border: 1px solid rgba(200, 160, 90, 0.2);
+            border-radius: 20px;
+            padding: 28px 30px 24px;
+            max-width: 500px;
+            width: 92%;
+            text-align: left;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+                transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.8);
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        #info-panel.visible {
+            opacity: 1;
+            pointer-events: all;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        #info-panel .close-btn {
+            position: absolute;
+            top: 10px;
+            right: 12px;
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 50%;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.25s;
+            pointer-events: all;
+            z-index: 5;
+        }
+        #info-panel .close-btn:hover {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.18);
+        }
+
+        #info-panel .uni-name {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 26px;
+            font-weight: 700;
+            color: #fff;
+            line-height: 1.1;
+            margin-bottom: 2px;
+            padding-right: 36px;
+        }
+        #info-panel .uni-tag {
+            display: inline-block;
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: #0a101e;
+            background: #c8a15e;
+            padding: 2px 14px;
+            border-radius: 20px;
+            margin-bottom: 8px;
+        }
+        #info-panel .scholarship-badge {
+            font-size: 15px;
+            font-weight: 600;
+            color: #e8d5a8;
+            background: rgba(200, 160, 90, 0.12);
+            padding: 3px 16px;
+            border-radius: 20px;
+            margin-bottom: 12px;
+            border: 1px solid rgba(200, 160, 90, 0.15);
+            display: inline-block;
+        }
+        #info-panel .stat-line {
+            font-size: 13.5px;
+            color: rgba(255, 255, 255, 0.7);
+            margin-bottom: 4px;
+            line-height: 1.5;
+            display: flex;
+            align-items: baseline;
+            gap: 10px;
+        }
+        #info-panel .stat-line i {
+            color: #c8a15e;
+            width: 18px;
+            font-size: 12px;
+            text-align: center;
+        }
+        #info-panel .stat-line strong {
+            color: #fff;
+            font-weight: 600;
+        }
+        #info-panel .card-note {
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.5);
+            border-top: 1px dashed rgba(200, 160, 90, 0.12);
+            padding-top: 12px;
+            margin-top: 8px;
+            line-height: 1.5;
+        }
+        #info-panel .card-note i {
+            color: #c8a15e;
+            margin-right: 6px;
+        }
+        #info-panel .pdf-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: #e8d5a8;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 13px;
+            background: rgba(200, 160, 90, 0.08);
+            padding: 6px 18px;
+            border-radius: 24px;
+            border: 1px solid rgba(200, 160, 90, 0.12);
+            transition: all 0.25s;
+            margin-top: 10px;
+            pointer-events: all;
+        }
+        #info-panel .pdf-link:hover {
+            background: rgba(200, 160, 90, 0.18);
+            color: #fff;
+        }
+
+        #info-panel::-webkit-scrollbar {
+            width: 3px;
+        }
+        #info-panel::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        #info-panel::-webkit-scrollbar-thumb {
+            background: #c8a15e;
+            border-radius: 10px;
+        }
+
+        @media (max-width: 600px) {
+            #info-panel {
+                bottom: 20px;
+                padding: 20px 18px 18px;
+                max-width: 96%;
+                border-radius: 16px;
+                max-height: 70vh;
+            }
+            #info-panel .uni-name {
+                font-size: 22px;
+            }
+            #info-panel .stat-line {
+                font-size: 12px;
+                gap: 6px;
+            }
+            #info-panel .scholarship-badge {
+                font-size: 13px;
+            }
+        }
+        @media (max-width: 420px) {
+            #info-panel .uni-name {
+                font-size: 18px;
+            }
+            #info-panel .stat-line {
+                font-size: 11px;
+                flex-wrap: wrap;
+            }
+            #info-panel {
+                padding: 16px 14px 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ─── THREE.JS CANVAS ───────────────────────────────────────── -->
+    <div id="canvas-container"></div>
+
+    <!-- ─── CSS2D LABELS CONTAINER ────────────────────────────────── -->
+    <div class="label-container" id="label-container"></div>
+
+    <!-- ─── UI OVERLAY ─────────────────────────────────────────────── -->
+    <div class="ui-overlay">
+        <div class="header">
+            <div class="label">✦ Offers &amp; Scholarships</div>
+            <h1>My Admission Universe</h1>
+            <div class="sub">
+                <i class="fas fa-asterisk"></i>
+                I was privileged to receive these offers for Fall 2025 admission; however, due to personal/family decisions, I chose not to proceed with enrollment.
+                <i class="fas fa-asterisk"></i>
+            </div>
+        </div>
+        <div class="footer-hint">
+            <i class="fas fa-mouse-pointer"></i>
+            Click or tap a planet to view offer details &amp; scholarship info
+            <i class="fas fa-mouse-pointer"></i>
+        </div>
+    </div>
+
+    <!-- ─── INFO PANEL ──────────────────────────────────────────────── -->
+    <div id="info-panel">
+        <button class="close-btn" id="closePanel"><i class="fas fa-times"></i></button>
+        <div class="uni-name" id="panelName">University</div>
+        <div><span class="uni-tag" id="panelTag">Tag</span></div>
+        <div><span class="scholarship-badge" id="panelScholarship">Scholarship</span></div>
+        <div id="panelStats"></div>
+        <div class="card-note" id="panelNote"></div>
+        <div>
+            <a href="#" class="pdf-link" target="_blank" id="panelPdf">
+                <i class="fas fa-file-pdf"></i> View Offer Letter
+            </a>
+        </div>
+    </div>
+
+    <!-- ─── THREE.JS ───────────────────────────────────────────────── -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js">
+    </script>
+
+    <script>
+        // ─── DATA ──────────────────────────────────────────────────────
+        const scholarshipData = [{
+            id: 0,
+            name: 'Stony Brook University',
+            tag: 'Public Ivy',
+            scholarship: '$32,000 Global Excellence',
+            stats: [
+                '<i class="fas fa-trophy"></i> <strong>Top 25</strong> Public University (Forbes)',
+                '<i class="fas fa-university"></i> <strong>#58</strong> National Universities (U.S. News)',
+                '<i class="fas fa-flask"></i> Member of <strong>AAU</strong>',
+                '<i class="fas fa-globe-americas"></i> <strong>#452</strong> QS World Ranking'
+            ],
+            note: '',
+            pdf: 'https://drive.google.com/file/d/1O84mBZgUZEckWKhf95-JF9E_o192qc6V/view?usp=sharing',
+            color: '#3a9bd5',
+            size: 0.9,
+            orbit: 5.2,
+            speed: 0.6,
+            label: 'Stony Brook'
+        }, {
+            id: 1,
+            name: 'Rensselaer Polytechnic Institute',
+            tag: 'Engineering Powerhouse',
+            scholarship: '$10,000 Leadership Award',
+            stats: [
+                '<i class="fas fa-trophy"></i> <strong>#51</strong> National Universities (U.S. News)',
+                '<i class="fas fa-cogs"></i> <strong>Top 10</strong> Undergraduate Engineering',
+                '<i class="fas fa-award"></i> Merit-based Leadership Award'
+            ],
+            note: 'Recognized for academic & personal achievement.',
+            pdf: 'https://drive.google.com/file/d/1McemTg4u6VohRX2oMQl4rk0GFym0qdd-/view?usp=drive_link',
+            color: '#d45d5d',
+            size: 0.75,
+            orbit: 7.0,
+            speed: 0.45,
+            label: 'Rensselaer'
+        }, {
+            id: 2,
+            name: 'Syracuse University',
+            tag: 'Orange',
+            scholarship: '$10,000 Dean\'s Scholarship',
+            stats: [
+                '<i class="fas fa-trophy"></i> <strong>#62</strong> National Universities (U.S. News)',
+                '<i class="fas fa-laptop-code"></i> College of Engineering & CS',
+                '<i class="fas fa-file-signature"></i> Conditional admission'
+            ],
+            note: 'Dean\'s Scholarship for academic achievement.',
+            pdf: 'https://drive.google.com/file/d/1Q2ZdMkFhdGCnBu9qN_amhKTnW8wCshwD/view?usp=drive_link',
+            color: '#e8913a',
+            size: 0.8,
+            orbit: 8.8,
+            speed: 0.35,
+            label: 'Syracuse'
+        }, {
+            id: 3,
+            name: 'Belmont University',
+            tag: 'Music City',
+            scholarship: '$22,000/yr · $88,000 total',
+            stats: [
+                '<i class="fas fa-trophy"></i> <strong>#5</strong> Regional Universities South',
+                '<i class="fas fa-music"></i> Nashville – healthcare & music capital',
+                '<i class="fas fa-graduation-cap"></i> Renewable Academic Merit'
+            ],
+            note: 'Merit award for outstanding academic record.',
+            pdf: 'https://drive.google.com/file/d/1ihcjq9O-xCOsPAvfIbLYE5XWBEPKsM1j/view?usp=drive_link',
+            color: '#8b6bc4',
+            size: 0.8,
+            orbit: 10.6,
+            speed: 0.28,
+            label: 'Belmont'
+        }, {
+            id: 4,
+            name: 'Reed College & Rhodes College',
+            tag: 'Waitlist Offers',
+            scholarship: 'Waitlisted',
+            stats: [
+                '<i class="fas fa-trophy"></i> Reed: <strong>#2</strong> Liberal Arts (Forbes)',
+                '<i class="fas fa-trophy"></i> Rhodes: <strong>#1</strong> Best Undergraduate Teaching',
+                '<i class="fas fa-users"></i> Highly selective liberal arts'
+            ],
+            note: 'Waitlist offers received; did not pursue further.',
+            pdf: 'https://drive.google.com/file/d/1BkBdrnS4Eil-yDVTPTT4rv2f1NPwjIYC/view?usp=drive_link',
+            color: '#4caf84',
+            size: 0.7,
+            orbit: 12.4,
+            speed: 0.22,
+            label: 'Reed & Rhodes'
+        }, {
+            id: 5,
+            name: 'University of Bradford',
+            tag: 'UK Scholar',
+            scholarship: '£7,500 International Academic',
+            stats: [
+                '<i class="fas fa-trophy"></i> <strong>Top 50</strong> in UK for Engineering (Guardian)',
+                '<i class="fas fa-globe-europe"></i> <strong>#601–800</strong> THE World Ranking',
+                '<i class="fas fa-award"></i> £7,500 merit-based scholarship',
+                '<i class="fas fa-robot"></i> Programme: <strong>BSc Computer Science for AI</strong>'
+            ],
+            note: 'Offer for BSc Computer Science for Artificial Intelligence.',
+            pdf: 'https://drive.google.com/file/d/1IUIP8uomUp9Vc4vyKEzugHY_OGXKIMSv/view?usp=sharing',
+            color: '#e67e22',
+            size: 0.75,
+            orbit: 14.2,
+            speed: 0.18,
+            label: 'Bradford'
+        }];
+
+        // ─── THREE.JS SETUP ──────────────────────────────────────────
+        const container = document.getElementById('canvas-container');
+        const labelContainer = document.getElementById('label-container');
+
+        // Detect lower-power / small-screen devices so we don't push a desktop-grade
+        // render (shadows, full AA, 2x pixel ratio, 4000 stars) onto a phone GPU.
+        // That mismatch was the main source of the lag/jank on mobile.
+        const isSmallScreen = window.innerWidth <= 760;
+        const isLowPower = isSmallScreen || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x05080f);
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 16, 24);
+        camera.lookAt(0, 0, 0);
+
+        // WebGL Renderer
+        const renderer = new THREE.WebGLRenderer({ antialias: !isLowPower, alpha: false, powerPreference: 'high-performance' });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, isLowPower ? 1.5 : 2));
+        renderer.shadowMap.enabled = !isLowPower;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.2;
+        container.appendChild(renderer.domElement);
+
+        // ─── LIGHTWEIGHT LABEL LAYER ────────────────────────────────
+        // Replaces three.js's CSS2DRenderer with a smaller, cheaper version:
+        // project each tracked object's world position to screen space and set
+        // a GPU-composited transform. Using plain (sub-pixel) values here on
+        // purpose — rounding to whole pixels actually caused the labels to
+        // flicker between two adjacent pixels on slow-moving planets, which is
+        // what looked like "shaking." translate3d already renders fractional
+        // offsets smoothly since the browser doesn't re-rasterize text per frame.
+        const labelLayer = {
+            items: [], // { el, object3D, yOffset }
+            add(object3D, el, yOffset = 0) {
+                el.style.position = 'absolute';
+                el.style.top = '0';
+                el.style.left = '0';
+                labelContainer.appendChild(el);
+                this.items.push({ el, object3D, yOffset });
+            },
+            update() {
+                const halfW = window.innerWidth / 2;
+                const halfH = window.innerHeight / 2;
+                const v = new THREE.Vector3();
+                for (const item of this.items) {
+                    item.object3D.getWorldPosition(v);
+                    v.y += item.yOffset;
+                    v.project(camera);
+                    const behind = v.z > 1;
+                    if (behind) {
+                        item.el.style.opacity = '0';
+                        continue;
+                    }
+                    const x = v.x * halfW + halfW;
+                    const y = -v.y * halfH + halfH;
+                    item.el.style.opacity = '1';
+                    item.el.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0) translate(-50%, -50%)`;
+                }
+            }
+        };
+
+
+        // ─── LIGHTS ──────────────────────────────────────────────────
+        const ambientLight = new THREE.AmbientLight(0x223355, 0.3);
+        scene.add(ambientLight);
+
+        // Main light from sun position
+        const sunLight = new THREE.PointLight(0xffeedd, 2.5, 0, 0);
+        sunLight.position.set(0, 0, 0);
+        sunLight.castShadow = true;
+        scene.add(sunLight);
+
+        const fillLight = new THREE.DirectionalLight(0x4488bb, 0.4);
+        fillLight.position.set(-10, 10, 10);
+        scene.add(fillLight);
+
+        const backLight = new THREE.DirectionalLight(0x335577, 0.25);
+        backLight.position.set(0, -5, -15);
+        scene.add(backLight);
+
+        const topLight = new THREE.DirectionalLight(0x88aaff, 0.15);
+        topLight.position.set(0, 20, 0);
+        scene.add(topLight);
+
+        // ─── PROCEDURAL SURFACE TEXTURES (no external image assets needed) ──
+        function seededRand(seed) {
+            let s = seed | 0;
+            return function () {
+                s = (s + 0x6D2B79F5) | 0;
+                let t = Math.imul(s ^ (s >>> 15), 1 | s);
+                t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+                return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+            };
+        }
+        function createSunTexture() {
+            const w = 256, h = 128;
+            const canvas = document.createElement('canvas');
+            canvas.width = w; canvas.height = h;
+            const ctx = canvas.getContext('2d');
+            const grad = ctx.createLinearGradient(0, 0, 0, h);
+            grad.addColorStop(0, '#fff3c0');
+            grad.addColorStop(0.5, '#ffae35');
+            grad.addColorStop(1, '#ff6a00');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, w, h);
+            const rand = seededRand(99);
+            for (let i = 0; i < 260; i++) {
+                const x = rand() * w, y = rand() * h, r = 3 + rand() * 11;
+                ctx.fillStyle = rand() > 0.5
+                    ? `rgba(180,55,0,${0.15 + rand() * 0.25})`
+                    : `rgba(255,235,160,${0.15 + rand() * 0.25})`;
+                ctx.beginPath();
+                ctx.ellipse(x, y, r, r * 0.55, rand() * Math.PI, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            return new THREE.CanvasTexture(canvas);
+        }
+        function createPlanetTexture(baseColorHex, seed) {
+            const w = 256, h = 128;
+            const canvas = document.createElement('canvas');
+            canvas.width = w; canvas.height = h;
+            const ctx = canvas.getContext('2d');
+            const c = new THREE.Color(baseColorHex);
+            ctx.fillStyle = `rgb(${c.r * 255},${c.g * 255},${c.b * 255})`;
+            ctx.fillRect(0, 0, w, h);
+            const rand = seededRand(seed);
+            // mottled continents/clouds
+            for (let i = 0; i < 90; i++) {
+                const x = rand() * w, y = rand() * h, r = 5 + rand() * 20;
+                const shade = (rand() - 0.5) * 0.5;
+                const col = c.clone();
+                col.r = Math.min(1, Math.max(0, col.r + shade));
+                col.g = Math.min(1, Math.max(0, col.g + shade));
+                col.b = Math.min(1, Math.max(0, col.b + shade));
+                ctx.fillStyle = `rgba(${col.r * 255},${col.g * 255},${col.b * 255},0.55)`;
+                ctx.beginPath();
+                ctx.ellipse(x, y, r, r * 0.6, rand() * Math.PI, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            // subtle horizontal banding for surface depth
+            for (let y = 0; y < h; y += 5 + Math.floor(rand() * 6)) {
+                ctx.fillStyle = `rgba(0,0,0,${0.03 + rand() * 0.05})`;
+                ctx.fillRect(0, y, w, 2 + rand() * 2);
+            }
+            return new THREE.CanvasTexture(canvas);
+        }
+
+        // ─── SUN ──────────────────────────────────────────────────────
+        const sunGeo = new THREE.SphereGeometry(1.4, isLowPower ? 32 : 64, isLowPower ? 32 : 64);
+        const sunTexture = createSunTexture();
+        const sunMat = new THREE.MeshStandardMaterial({
+            map: sunTexture,
+            emissive: 0xff5500,
+            emissiveMap: sunTexture,
+            emissiveIntensity: 2.0,
+            roughness: 0.2,
+            metalness: 0.0
+        });
+        const sun = new THREE.Mesh(sunGeo, sunMat);
+        sun.position.set(0, 0, 0);
+        scene.add(sun);
+
+        // Sun glow sprites (additive blending for brightness)
+        function createGlowTexture(color, size, opacity) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 256;
+            canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+            const gradient = ctx.createRadialGradient(128, 128, 0, 128, 128, 128);
+            gradient.addColorStop(0, `rgba(${color}, ${opacity})`);
+            gradient.addColorStop(0.3, `rgba(${color}, ${opacity * 0.4})`);
+            gradient.addColorStop(1, `rgba(${color}, 0)`);
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, 256, 256);
+            return new THREE.CanvasTexture(canvas);
+        }
+
+        function createGlowSprite(color, size, opacity) {
+            const texture = createGlowTexture(color, size, opacity);
+            const material = new THREE.SpriteMaterial({
+                map: texture,
+                transparent: true,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false,
+                opacity: 0.9
+            });
+            const sprite = new THREE.Sprite(material);
+            sprite.scale.set(size, size, 1);
+            return sprite;
+        }
+
+        // White ring texture used to "mark" a planet on hover/selection. Drawn
+        // once and reused via a Sprite per planet (sprites always face the
+        // camera, so the ring reads as a clean circle from any angle).
+        function createRingTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 128;
+            canvas.height = 128;
+            const ctx = canvas.getContext('2d');
+            ctx.strokeStyle = 'rgba(255,255,255,1)';
+            ctx.lineWidth = 5;
+            ctx.shadowColor = 'rgba(255,255,255,0.9)';
+            ctx.shadowBlur = 10;
+            ctx.beginPath();
+            ctx.arc(64, 64, 50, 0, Math.PI * 2);
+            ctx.stroke();
+            return new THREE.CanvasTexture(canvas);
+        }
+        const ringTexture = createRingTexture();
+
+        const glow1 = createGlowSprite('255, 200, 100', 14, 0.3);
+        glow1.position.set(0, 0, 0);
+        scene.add(glow1);
+
+        const glow2 = createGlowSprite('255, 180, 80', 9, 0.5);
+        glow2.position.set(0, 0, 0);
+        scene.add(glow2);
+
+        const glow3 = createGlowSprite('255, 150, 50', 5, 0.8);
+        glow3.position.set(0, 0, 0);
+        scene.add(glow3);
+
+        // Sun label
+        const sunLabelDiv = document.createElement('div');
+        sunLabelDiv.textContent = 'Sifat';
+        sunLabelDiv.style.color = '#e8d5a8';
+        sunLabelDiv.style.fontFamily = "'Cormorant Garamond', serif";
+        sunLabelDiv.style.fontSize = '15px';
+        sunLabelDiv.style.fontWeight = '700';
+        sunLabelDiv.style.textShadow = '0 1px 3px rgba(0,0,0,0.9)';
+        sunLabelDiv.style.background = 'rgba(6,10,20,0.5)';
+        sunLabelDiv.style.padding = '2px 16px';
+        sunLabelDiv.style.borderRadius = '20px';
+        sunLabelDiv.style.border = '1px solid rgba(200,160,90,0.2)';
+        sunLabelDiv.style.whiteSpace = 'nowrap';
+        sunLabelDiv.style.willChange = 'transform';
+        labelLayer.add(sun, sunLabelDiv, -2.2);
+
+        // ─── ORBITS & PLANETS ──────────────────────────────────────
+        const planets = [];
+        const clickTargets = [];
+
+        scholarshipData.forEach((data) => {
+            const radius = data.orbit;
+            const size = data.size * 1.05;
+            const color = new THREE.Color(data.color);
+
+            // Orbit ring
+            const points = [];
+            const segments = isLowPower ? 64 : 96;
+            for (let i = 0; i <= segments; i++) {
+                const theta = (i / segments) * Math.PI * 2;
+                points.push(new THREE.Vector3(Math.cos(theta) * radius, 0, Math.sin(theta) * radius));
+            }
+            const orbitGeo = new THREE.BufferGeometry().setFromPoints(points);
+            const orbitMat = new THREE.LineBasicMaterial({
+                color: 0x6688aa,
+                transparent: true,
+                opacity: 0.15,
+                depthWrite: false
+            });
+            const orbitLine = new THREE.Line(orbitGeo, orbitMat);
+            scene.add(orbitLine);
+
+            // Planet mesh with real-feeling surface texture + bright "glaze"
+            const sphereSegs = isLowPower ? 24 : 48;
+            const geo = new THREE.SphereGeometry(size, sphereSegs, sphereSegs);
+            const surfaceTexture = createPlanetTexture(data.color, data.id * 97 + 13);
+            const mat = new THREE.MeshPhongMaterial({
+                map: surfaceTexture,
+                color: 0xffffff,
+                specular: new THREE.Color(0xaaaaaa),
+                shininess: 90,
+                emissive: color,
+                emissiveIntensity: 0.22,
+                flatShading: false
+            });
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            mesh.userData = { id: data.id };
+
+            const angle = Math.random() * Math.PI * 2;
+            mesh.position.x = Math.cos(angle) * radius;
+            mesh.position.z = Math.sin(angle) * radius;
+            scene.add(mesh);
+
+            // Invisible, generously-sized hit sphere parented to the planet.
+            // The visible planet sphere is small (and moves continuously), which
+            // made precise tapping on a phone unreliable — especially for the
+            // smaller/far-out planets like Bradford. Raycasting against this
+            // larger, unrendered sphere instead makes tapping forgiving without
+            // changing how anything looks.
+            const hitGeo = new THREE.SphereGeometry(Math.max(size * 2.4, 0.55), 12, 10);
+            const hitMat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false, depthTest: false });
+            const hitMesh = new THREE.Mesh(hitGeo, hitMat);
+            hitMesh.userData = { id: data.id };
+            mesh.add(hitMesh);
+
+            // Small glow around planet
+            const pGlow = createGlowSprite(
+                `${Math.floor(color.r * 255)}, ${Math.floor(color.g * 255)}, ${Math.floor(color.b * 255)}`,
+                size * 3.5,
+                0.15
+            );
+            pGlow.position.copy(mesh.position);
+            scene.add(pGlow);
+
+            // Hover/selection ring — starts invisible, brightens on hover or tap
+            const ringMat = new THREE.SpriteMaterial({
+                map: ringTexture,
+                transparent: true,
+                depthWrite: false,
+                depthTest: false,
+                opacity: 0
+            });
+            const ring = new THREE.Sprite(ringMat);
+            ring.scale.set(size * 3.4, size * 3.4, 1);
+            mesh.add(ring);
+
+            // Label for planet — name only, no secondary tag line
+            const labelDiv = document.createElement('div');
+            labelDiv.className = 'planet-label';
+            labelDiv.textContent = data.label;
+            labelLayer.add(mesh, labelDiv, -size - 0.8);
+
+            planets.push({
+                mesh,
+                glow: pGlow,
+                ring,
+                data,
+                angle,
+                radius,
+                speed: data.speed * 0.3,
+                size
+            });
+
+            clickTargets.push(hitMesh);
+        });
+
+        // ─── STARFIELD ───────────────────────────────────────────────
+        function createStars() {
+            const vertices = [];
+            const colors = [];
+            const count = isLowPower ? 1500 : 4000;
+            for (let i = 0; i < count; i++) {
+                const r = 60 + Math.random() * 250;
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.acos(2 * Math.random() - 1);
+                vertices.push(
+                    r * Math.sin(phi) * Math.cos(theta),
+                    r * Math.cos(phi),
+                    r * Math.sin(phi) * Math.sin(theta)
+                );
+                const b = 0.4 + Math.random() * 0.6;
+                colors.push(b, b, b * 0.9);
+            }
+            const geo = new THREE.BufferGeometry();
+            geo.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+            geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+            const mat = new THREE.PointsMaterial({
+                size: 0.35,
+                vertexColors: true,
+                transparent: true,
+                opacity: 0.9,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false,
+                sizeAttenuation: true
+            });
+            const stars = new THREE.Points(geo, mat);
+            scene.add(stars);
+            return stars;
+        }
+        const starField = createStars();
+
+        // ─── RAYCASTER ──────────────────────────────────────────────
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+        let selectedId = null;
+
+        // ─── UI REFS ──────────────────────────────────────────────────
+        const panel = document.getElementById('info-panel');
+        const closeBtn = document.getElementById('closePanel');
+        const panelName = document.getElementById('panelName');
+        const panelTag = document.getElementById('panelTag');
+        const panelScholarship = document.getElementById('panelScholarship');
+        const panelStats = document.getElementById('panelStats');
+        const panelNote = document.getElementById('panelNote');
+        const panelPdf = document.getElementById('panelPdf');
+
+        // ─── PANEL CONTROL ──────────────────────────────────────────
+        function showPanel(id) {
+            const data = scholarshipData.find(d => d.id === id);
+            if (!data) return;
+            selectedId = id;
+            panelName.textContent = data.name;
+            panelTag.textContent = data.tag;
+            panelScholarship.textContent = data.scholarship;
+            panelStats.innerHTML = data.stats.map(s => `<div class="stat-line">${s}</div>`).join('');
+            if (data.note) {
+                panelNote.innerHTML = `<i class="fas fa-info-circle"></i> ${data.note}`;
+                panelNote.style.display = '';
+            } else {
+                panelNote.style.display = 'none';
+            }
+            panelPdf.href = data.pdf || '#';
+            panel.classList.add('visible');
+
+            // Highlight planet
+            planets.forEach(p => {
+                const active = p.data.id === id;
+                p.mesh.material.emissiveIntensity = active ? 0.5 : 0.22;
+                p.mesh.scale.set(active ? 1.6 : 1, active ? 1.6 : 1, active ? 1.6 : 1);
+                if (active) {
+                    p.mesh.material.specular.setHex(0xffffff);
+                } else {
+                    p.mesh.material.specular.setHex(0x888888);
+                }
+            });
+        }
+
+        function hidePanel() {
+            panel.classList.remove('visible');
+            selectedId = null;
+            planets.forEach(p => {
+                p.mesh.material.emissiveIntensity = 0.22;
+                p.mesh.scale.set(1, 1, 1);
+                p.mesh.material.specular.setHex(0x888888);
+            });
+        }
+
+        closeBtn.addEventListener('click', hidePanel);
+
+        // ─── POINTER EVENTS ──────────────────────────────────────────
+        function onPointerDown(event) {
+            const rect = renderer.domElement.getBoundingClientRect();
+            const clientX = event.clientX || (event.touches && event.touches[0].clientX);
+            const clientY = event.clientY || (event.touches && event.touches[0].clientY);
+            if (clientX == null) return;
+
+            mouse.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(clickTargets);
+
+            if (intersects.length > 0) {
+                const hit = intersects[0].object;
+                const id = hit.userData.id;
+                if (id !== undefined) {
+                    if (selectedId === id) {
+                        hidePanel();
+                    } else {
+                        showPanel(id);
+                    }
+                    return;
+                }
+            }
+            // Click on empty space: close panel
+            hidePanel();
+        }
+
+        // Mouse events
+        renderer.domElement.addEventListener('click', onPointerDown);
+        // Touch events
+        renderer.domElement.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            onPointerDown(e);
+        }, { passive: false });
+
+        // Hover (desktop only — touch has no hover concept) drives the ring marker
+        let hoveredId = null;
+        renderer.domElement.addEventListener('mousemove', (event) => {
+            const rect = renderer.domElement.getBoundingClientRect();
+            mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(clickTargets);
+            hoveredId = intersects.length > 0 ? intersects[0].object.userData.id : null;
+            renderer.domElement.style.cursor = hoveredId !== null ? 'pointer' : 'default';
+        });
+
+        // ─── KEYBOARD ──────────────────────────────────────────────────
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') hidePanel();
+        });
+
+        // ─── RESIZE ──────────────────────────────────────────────────
+        // Instead of three hardcoded camera positions for arbitrary breakpoints
+        // (which is why planets/orbits clipped off-screen at in-between sizes,
+        // and shrinking the window broke the "pc view"), the camera distance is
+        // calculated every time from the actual outer orbit radius and the
+        // current aspect ratio, so the whole system fits at any width.
+        const maxOrbitRadius = Math.max(...scholarshipData.map(d => d.orbit)) + 2.2; // + buffer for planet size & label
+        const camDir = new THREE.Vector3(0, 16, 24).normalize(); // preserve original viewing angle
+        function onResize() {
+            const w = window.innerWidth;
+            const h = window.innerHeight;
+            const aspect = w / h;
+            camera.aspect = aspect;
+
+            const vFovRad = (camera.fov * Math.PI) / 180;
+            let distance;
+            if (aspect < 1) {
+                // Narrow/portrait (mobile) — unchanged, this already looks right.
+                const effectiveFovRad = 2 * Math.atan(Math.tan(vFovRad / 2) * aspect);
+                distance = (maxOrbitRadius / Math.sin(effectiveFovRad / 2)) * 1.22;
+            } else {
+                // Wide/landscape (PC) — the orbital plane is foreshortened
+                // vertically at this camera elevation (~34° above the plane), so
+                // it doesn't actually need the full orbit radius of vertical
+                // headroom. Fitting on that foreshortened height instead of the
+                // full radius lets the camera move in closer, so the system
+                // fills more of the width instead of floating in empty space.
+                const foreshortenedRadius = maxOrbitRadius * 0.72;
+                distance = (foreshortenedRadius / Math.sin(vFovRad / 2)) * 1.12;
+            }
+            distance = Math.max(16, Math.min(distance, 64));
+
+            camera.position.copy(camDir).multiplyScalar(distance);
+            camera.lookAt(0, 0, 0);
+            camera.updateProjectionMatrix();
+
+            renderer.setSize(w, h);
+        }
+        window.addEventListener('resize', onResize);
+        setTimeout(onResize, 100);
+
+        // ─── ANIMATION LOOP ──────────────────────────────────────────
+        let clock = new THREE.Clock();
+
+        function animate() {
+            const delta = clock.getDelta();
+
+            // Rotate sun
+            sun.rotation.y += delta * 0.08;
+
+            // Animate planets
+            planets.forEach((p) => {
+                p.angle += delta * p.speed * 0.4;
+                const x = Math.cos(p.angle) * p.radius;
+                const z = Math.sin(p.angle) * p.radius;
+                p.mesh.position.set(x, 0, z);
+                p.glow.position.copy(p.mesh.position);
+                p.mesh.rotation.y += delta * 0.5;
+
+                // Brighten the ring on hover or selection, fade it out otherwise
+                const marked = p.data.id === hoveredId || p.data.id === selectedId;
+                const targetOpacity = marked ? 0.9 : 0;
+                p.ring.material.opacity += (targetOpacity - p.ring.material.opacity) * 0.2;
+            });
+
+            // Rotate star field slowly
+            starField.rotation.y += delta * 0.0015;
+
+            renderer.render(scene, camera);
+            labelLayer.update();
+            requestAnimationFrame(animate);
+        }
+
+        animate();
+
+        console.log('🚀 3D Solar System loaded — explore your offers!');
+    </script>
+
+</body>
+</html>
